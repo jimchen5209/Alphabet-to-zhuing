@@ -1,186 +1,328 @@
 import sys
 import time
 import telepot
-from telepot.namedtuple import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, ForceReply
-from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton
-from telepot.namedtuple import InlineQueryResultArticle, InlineQueryResultPhoto, InputTextMessageContent
+import urllib
+import urllib.request
+import os
+import io
+from telepot.loop import MessageLoop
+try:
+    fs = open("./config.json","r")
+except:
+    tp, val, tb = sys.exc_info()
+    print("Errored when loading config.json:"+str(val).split(',')[0].replace('(','').replace("'",""))
+    programPause = input("Press any key to stop...\n")
+    exit()
 
-TOKEN = ''
-
-
-
-
+#load config
+config = eval(fs.read())
+fs.close()
+TOKEN = config["TOKEN"]
+Debug = config["Debug"]
 
 def on_chat_message(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
     bot_me= bot.getMe()
     username= bot_me['username'].replace(' ','')
+    log("[Debug] Raw message:"+str(msg))
+    dlog = "["+time.strftime("%Y/%m/%d-%H:%M:%S").replace("'","")+"][Info]"
     try:
-        print('[EDIT][',msg['edit_date'],']:',msg['message_id'],' -->',msg['text'])
+        dlog=dlog+"[EDITED"+str(msg['edit_date'])+"]"
     except:
         time.sleep(0)
+    try:
+        fuser= bot.getChatMember(chat_id,msg['from']['id'])
+    except:
+        fnick = "Channel Admin"
+        fuserid = None
     else:
-        time.sleep(0)
+        fnick = fuser['user']['first_name']
+        try:
+            fnick = fnick + ' ' + fuser['user']['last_name']
+        except:
+            fnick = fnick
+        try:
+            fnick= fnick +"@"+ fuser['user']['username']
+        except:
+            fnick= fnick
+        fuserid = str(fuser['user']['id'])
     if chat_type == 'private':
+        dlog = dlog + "[Private]["+str(msg['message_id'])+"]"
         try:
             reply_to = msg['reply_to_message']['from']['id']
         except:
-            if content_type != 'text':
-                try:
-                    print('[Info][',msg['message_id'],']',msg['chat']['username'],'(',chat_id, ') sent a ', content_type)
-                except:
-                    print('[Info][',msg['message_id'],']',chat_id, ' sent a ', content_type)
-                return
-            try:
-                print('[Info][',msg['message_id'],']',msg['chat']['username'],'(',chat_id, ') :', msg['text'])
-            except:
-                print('[Info][',msg['message_id'],']',chat_id, ' :', msg['text'])
+            dlog = dlog
         else:
-            if content_type != 'text':
+            if reply_to == bot_me['id']:
+                dlog = dlog + "( Reply to my message "+str(msg['reply_to_message']['message_id'])+" )"
+            else:
+                tuser= msg['reply_to_message']['from']['first_name']
                 try:
-                    print('[Info][',msg['message_id'],'](Reply)',msg['chat']['username'],'(',chat_id, ') sent a ', content_type)
+                    tuser= tuser + ' ' + msg['reply_to_message']['from']['last_name']
                 except:
-                    print('[Info][',msg['message_id'],'](Reply)',chat_id, ' sent a ', content_type)
-                return
+                    tuser= tuser
+                try:
+                    tuser= tuser + '@' + msg['reply_to_message']['from']['username']
+                except:
+                    tuser= tuser 
+                dlog = dlog + "( Reply to "+tuser+"'s message "+str(msg['reply_to_message']['message_id'])+" )"
+        if content_type == 'text':
+            dlog = dlog+ ' ' + fnick + " ( "+fuserid+" ) : " + msg['text']
+        else:
+            dlog = dlog+ ' ' + fnick + " ( "+fuserid+" ) sent a "+ content_type
+        clog(dlog)
+        if content_type == 'photo':
+            flog = "[Photo]"
+            photo_array=msg['photo']
+            photo_array.reverse()
             try:
-                print('[Info][',msg['message_id'],'](Reply)',msg['chat']['username'],'(',chat_id, ') :', msg['text'])
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ photo_array[0]['file_id']
             except:
-                print('[Info][',msg['message_id'],'](Reply)',chat_id, ' :', msg['text'])
-            return
-        if msg['text'] == '/start':
-            bot.sendMessage(chat_id,'歡迎！給我英文字母我就會幫你轉成注音',reply_to_message_id=msg['message_id'])
-            return
-        if msg['text'] == '/a2z':
-            bot.sendMessage(chat_id,'此指令只能在群組中使用',reply_to_message_id=msg['message_id'])
-            return
-        string=a2z(msg['text'])
-        bot.sendMessage(chat_id,string,reply_to_message_id=msg['message_id'])
-        print('[Info] --->',string)
+                flog = flog +"FileID:"+ photo_array[0]['file_id']
+            clog(flog)
+        elif content_type == 'audio':
+            flog = "[Audio]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['audio']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['audio']['file_id']
+            clog(flog)
+        elif content_type == 'document':
+            flog = "[Document]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['document']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['document']['file_id']
+            clog(flog)
+        elif content_type == 'video':
+            flog = "[Video]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['video']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['video']['file_id']
+            clog(flog)
+        elif content_type == 'voice':
+            flog = "[Voice]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['voice']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['voice']['file_id']
+            clog(flog)
+        elif content_type == 'sticker':
+            flog = "[Sticker]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['sticker']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['sticker']['file_id']
+            clog(flog)
+        #command_detect
+        if content_type == 'text':
+            if msg['text'] == '/start':
+                dre = bot.sendMessage(chat_id,'歡迎！給我英文字母我就會幫你轉成注音',reply_to_message_id=msg['message_id'])
+                log("[Debug] Raw sent data:"+str(dre))
+                return
+            if msg['text'] == '/a2z':
+                dre = bot.sendMessage(chat_id,'此指令只能在群組中使用',reply_to_message_id=msg['message_id'])
+                log("[Debug] Raw sent data:"+str(dre))
+                return
+            string=a2z(msg['text'])
+            dre = bot.sendMessage(chat_id,string,reply_to_message_id=msg['message_id'])
+            log("[Debug] Raw sent data:"+str(dre))
+            print('[A2Z] --->',string)
     elif chat_type == 'group' or chat_type == 'supergroup':
+        dlog = dlog + "["+str(msg['message_id'])+"]"
+        try:
+            reply_to = msg['reply_to_message']['from']['id']
+        except:
+            dlog = dlog
+        else:
+            if reply_to == bot_me['id']:
+                dlog = dlog + "( Reply to my message "+str(msg['reply_to_message']['message_id'])+" )"
+            else:
+                tuser= msg['reply_to_message']['from']['first_name']
+                try:
+                    tuser= tuser + ' ' + msg['reply_to_message']['from']['last_name']
+                except:
+                    tuser= tuser
+                try:
+                    tuser= tuser + '@' + msg['reply_to_message']['from']['username']
+                except:
+                    tuser= tuser 
+                dlog = dlog + "( Reply to "+tuser+"'s message "+str(msg['reply_to_message']['message_id'])+" )"
+        if content_type == 'text':
+            dlog = dlog+ ' ' + fnick + " ( "+fuserid+" ) in "+msg['chat']['title']+' ( '+str(chat_id)+ ' ): ' + msg['text']
+        elif content_type == 'new_chat_member':
+            if msg['new_chat_member']['id'] == bot_me['id']:
+                dlog = dlog+ ' I have been added to ' +msg['chat']['title']+' ( '+str(chat_id)+ ' ) by '+ fnick + " ( "+fuserid+" )"
+            else:
+                tuser= msg['new_chat_member']['first_name']
+                try:
+                    tuser= tuser + ' ' + msg['new_chat_member']['last_name']
+                except:
+                    tuser= tuser
+                try:
+                    tuser= tuser + '@' + msg['new_chat_member']['username']
+                except:
+                    tuser= tuser 
+                dlog = dlog+' '+ tuser +' joined the ' + chat_type+ ' '+msg['chat']['title']+' ( '+str(chat_id)+ ' ) '
+        elif content_type == 'left_chat_member':
+            if msg['left_chat_member']['id'] == bot_me['id']:
+                dlog = dlog+ ' I have been kicked from ' +msg['chat']['title']+' ( '+str(chat_id)+ ' ) by '+ fnick + " ( "+fuserid+" )"
+            else:
+                tuser= msg['left_chat_member']['first_name']
+                try:
+                    tuser= tuser + ' ' + msg['left_chat_member']['last_name']
+                except:
+                    tuser= tuser
+                try:
+                    tuser= tuser + '@' + msg['left_chat_member']['username']
+                except:
+                    tuser= tuser 
+                dlog = dlog+' '+ tuser +' left the ' + chat_type + ' '+msg['chat']['title']+' ( '+str(chat_id)+ ' ) '
+        else:
+            dlog = dlog+ ' ' + fnick + " ( "+fuserid+" ) in "+msg['chat']['title']+' ( '+str(chat_id)+ ' ) sent a '+ content_type
+        clog(dlog)
+        if content_type == 'photo':
+            flog = "[Photo]"
+            photo_array=msg['photo']
+            photo_array.reverse()
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ photo_array[0]['file_id']
+            except:
+                flog = flog +"FileID:"+ photo_array[0]['file_id']
+            clog(flog)
+        elif content_type == 'audio':
+            flog = "[Audio]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['audio']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['audio']['file_id']
+            clog(flog)
+        elif content_type == 'document':
+            flog = "[Document]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['document']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['document']['file_id']
+            clog(flog)
+        elif content_type == 'video':
+            flog = "[Video]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['video']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['video']['file_id']
+            clog(flog)
+        elif content_type == 'voice':
+            flog = "[Voice]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['voice']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['voice']['file_id']
+            clog(flog)
+        elif content_type == 'sticker':
+            flog = "[Sticker]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['sticker']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['sticker']['file_id']
+            clog(flog)
+        #command_detect
+        if content_type == 'text':
+            cmd = msg['text'].split()
+            if cmd[0] == '/a2z' or cmd[0] == '/a2z@'+username:
+                a2zc(chat_id,msg)
+    elif chat_type == 'channel':
+        dlog = dlog + "["+str(msg['message_id'])+"]"
         try:
             reply_to = msg['reply_to_message']
         except:
-            if content_type != 'text':
-                if content_type == 'new_chat_member':
-                    if msg['new_chat_member']['id'] == bot_me['id']:
-                        try:
-                            print('[Info][',msg['message_id'],'] I have been joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['username'],'(',msg['from']['id'],')')
-                        except:
-                            print('[Info][',msg['message_id'],'] I have been joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['id'])
-                    else:
-                        try:
-                            print('[Info][',msg['message_id'],'] ',msg['new_chat_member']['username'],' joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                        except:
-                            print('[Info][',msg['message_id'],'] ',msg['new_chat_member']['id'],' joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                elif content_type == 'left_chat_member':
-                    if msg['left_chat_member']['id'] == bot_me['id']:
-                        try:
-                            print('[Info][',msg['message_id'],'] I have been kicked from ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['username'],'(',msg['from']['id'],')')
-                        except:
-                            print('[Info][',msg['message_id'],'] I have been kicked from ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['id'])
-                    else:
-                        try:
-                            print('[Info][',msg['message_id'],'] ',msg['left_chat_member']['username'],' left the ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                        except:
-                            print('[Info][',msg['message_id'],'] ',msg['left_chat_member']['id'],' left the ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                else:
-                    try:
-                        print('[Info][',msg['message_id'],']',msg['from']['username'],'(',msg['from']['id'], ') in',msg['chat']['title'],'(',chat_id, ')sent a ', content_type)
-                    except:
-                        print('[Info][',msg['message_id'],']',msg['from']['id'], ' in',msg['chat']['title'],'(',chat_id, ')sent a ', content_type)
-                return
-            try:
-                print('[Info][',msg['message_id'],']',msg['from']['username'],'(',msg['from']['id'], ') in',msg['chat']['title'],'(',chat_id, ') :',msg['text'])
-            except:
-                print('[Info][',msg['message_id'],']',msg['from']['id'], ' in',msg['chat']['title'],'(',chat_id, ') :',msg['text'])
-            if msg['text'] == '/a2z' or msg['text'] == '/a2z@'+username:
-                bot.sendMessage(chat_id,'請回覆一個信息來將英文字母轉成注音',reply_to_message_id=msg['message_id'])
+            dlog = dlog
+        else: 
+            dlog = dlog + "( Reply to "+str(msg['reply_to_message']['message_id'])+" )"
+        if content_type == 'text':
+            dlog = dlog+ ' ' + fnick 
+            if fuserid:
+                dlog = dlog + " ( "+fuserid+" )"
+            dlog = dlog + " in channel "+msg['chat']['title']+' ( '+str(chat_id)+ ' ): ' + msg['text']
         else:
-            if content_type != 'text':
-                if content_type == 'new_chat_member':
-                    if msg['new_chat_member']['id'] == bot_me['id']:
-                        try:
-                            print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],') I have been joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['username'],'(',msg['from']['id'],')')
-                        except:
-                            try:
-                                print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],') I have been joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['username'],'(',msg['from']['id'],')')
-                            except:
-                                try:
-                                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],') I have been joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['id'])
-                                except:
-                                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],') I have been joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['id'])
-                    else:
-                        try:
-                            print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],') ',msg['new_chat_member']['username'],' joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                        except:
-                            try:
-                                print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],') ',msg['new_chat_member']['username'],' joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                            except:
-                                try:
-                                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],') ',msg['new_chat_member']['id'],' joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                                except:
-                                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],') ',msg['new_chat_member']['id'],' joined a ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                elif content_type == 'left_chat_member':
-                    if msg['left_chat_member']['id'] == bot_me['id']:
-                        try:
-                            print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],') I have been kicked from ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['username'],'(',msg['from']['id'],')')
-                        except:
-                            try:
-                                print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],') I have been kicked from ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['username'],'(',msg['from']['id'],')')
-                            except:
-                                try:
-                                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],') I have been kicked from ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['id'])
-                                except:
-                                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],') I have been kicked from ', chat_type,':',msg['chat']['title'],'(',chat_id,') by',msg['from']['id'])
-                    else:
-                        try:
-                            print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],') ',msg['left_chat_member']['username'],' left the ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                        except:
-                            try:
-                                print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],') ',msg['left_chat_member']['username'],' left the ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                            except:
-                                try:
-                                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],') ',msg['left_chat_member']['id'],' left the ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                                except:
-                                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],') ',msg['left_chat_member']['id'],' left the ', chat_type,':',msg['chat']['title'],'(',chat_id,')')
-                else:
-                    try:
-                        print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],')',msg['from']['username'],'(',msg['from']['id'], ') in',msg['chat']['title'],'(',chat_id, ')sent a ', content_type)
-                    except:
-                        try:
-                            print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],')',msg['from']['username'],'(',msg['from']['id'], ') in',msg['chat']['title'],'(',chat_id, ')sent a ', content_type)
-                        except:
-                            try:
-                                print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],')',msg['from']['id'], ' in',msg['chat']['title'],'(',chat_id, ')sent a ', content_type)
-                            except:
-                                print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],')',msg['from']['id'], ' in',msg['chat']['title'],'(',chat_id, ')sent a ', content_type)
-                return
+            dlog = dlog + ' ' + fnick 
+            if fuserid:
+                dlog = dlog + " ( "+fuserid+" )"
+            dlog = dlog +" in channel"+msg['chat']['title']+' ( '+str(chat_id)+ ' ) sent a '+ content_type
+        clog(dlog)
+        if content_type == 'photo':
+            flog = "[Photo]"
+            photo_array=msg['photo']
+            photo_array.reverse()
             try:
-                print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],')',msg['from']['username'],'(',msg['from']['id'], ') in',msg['chat']['title'],'(',chat_id, ') :',msg['text'])
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ photo_array[0]['file_id']
             except:
-                try:
-                    print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],')',msg['from']['username'],'(',msg['from']['id'], ') in',msg['chat']['title'],'(',chat_id, ') :',msg['text'])
-                except:
-                    try:
-                        print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['username'],')',msg['from']['id'], ' in',msg['chat']['title'],'(',chat_id, ') :',msg['text'])
-                    except:
-                        print('[Info][',msg['message_id'],'] (Reply to ',msg['reply_to_message']['from']['id'],')',msg['from']['id'], ' in',msg['chat']['title'],'(',chat_id, ') :',msg['text'])
-            if msg['text'] == '/a2z' or msg['text'] == '/a2z@'+username:
-                try:
-                    tcm = reply_to['text']
-                except:
-                    try:
-                        bot.sendMessage(chat_id,'@' + msg['from']['username'].replace(' ','') + ' ,請回復一個文字信息',reply_to_message_id=reply_to['message_id'])
-                    except:
-                        bot.sendMessage(chat_id,msg['from']['first_name'].replace(' ','')+' '+msg['from']['last_name'].replace(' ','') + ' ,請回復一個文字信息',reply_to_message_id=reply_to['message_id'])
-                        bot.sendMessage(chat_id,'機器人發現您沒有設置用戶名稱(username),所以我只能這樣tag您',reply_to_message_id=msg['message_id'])
-                        bot.sendMessage(chat_id,'請設置用戶名稱，以獲得更好的體驗',reply_to_message_id=msg['message_id'])
-                        bot.sendMessage(chat_id,'https://telegram.me/StartTG/92',reply_to_message_id=msg['message_id'])
-                else:
-                    string=a2z(tcm)
-                    bot.sendMessage(chat_id,string,reply_to_message_id=reply_to['message_id'])
-                    print('[Info] --->',string)
-                
+                flog = flog +"FileID:"+ photo_array[0]['file_id']
+            clog(flog)
+        elif content_type == 'audio':
+            flog = "[Audio]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['audio']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['audio']['file_id']
+            clog(flog)
+        elif content_type == 'document':
+            flog = "[Document]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['document']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['document']['file_id']
+            clog(flog)
+        elif content_type == 'video':
+            flog = "[Video]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['video']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['video']['file_id']
+            clog(flog)
+        elif content_type == 'voice':
+            flog = "[Voice]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['voice']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['voice']['file_id']
+            clog(flog)
+        elif content_type == 'sticker':
+            flog = "[Sticker]"
+            try:
+                flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['sticker']['file_id']
+            except:
+                flog = flog +"FileID:"+ msg['sticker']['file_id']
+            clog(flog)
+
+def a2zc(chat_id,msg):
+    try:
+        reply_to = msg['reply_to_message']
+    except:
+        alpt = msg['text'].split(' ',1)
+        try:
+            tcm=alpt[1]
+        except:
+            dre = bot.sendMessage(chat_id,'/a2z <string>\n或回覆一個信息來將英文字母轉成注音',reply_to_message_id=msg['message_id'])
+            log("[Debug] Raw sent data:"+str(dre))
+        else:
+            string=a2z(tcm)
+            dre = bot.sendMessage(chat_id,string,reply_to_message_id=msg['message_id'])
+            log("[Debug] Raw sent data:"+str(dre))
+            clog('[A2Z] --->'+string)
+    else:
+        try:
+            tcm = reply_to['text']
+        except:
+            dre = bot.sendMessage(chat_id,'請回復一個文字信息',reply_to_message_id=msg['message_id'])
+            log("[Debug] Raw sent data:"+str(dre))
+        else:
+            string=a2z(tcm)
+            dre = bot.sendMessage(chat_id,string,reply_to_message_id=reply_to['message_id'])
+            log("[Debug] Raw sent data:"+str(dre))
+            clog('[A2Z] --->'+string)
+    return
+
 def a2z(textLine):
     zh = textLine.lower()
     zh = zh.replace("ａ", "a")
@@ -267,15 +409,40 @@ def a2z(textLine):
     zh = zh.replace('/','ㄥ')
     return zh
 
+def clog(text):
+    print(text)
+    log(text)
+    return
 
+def log(text):
+    if text[0:7] == "[Debug]":
+        if Debug == True:
+            logger= io.open(logpath+"-debug.log","a",encoding='utf8')
+            logger.write("["+time.strftime("%Y/%m/%d-%H:%M:%S").replace("'","")+"]"+text+"\n")
+            logger.close()
+        return
+    logger= io.open(logpath+".log","a",encoding='utf8')
+    logger.write(text+"\n")
+    logger.close()
+    return
 
+if os.path.isdir("./logs") == False:
+    os.mkdir("./logs")
+logpath = "./logs/"+time.strftime("%Y-%m-%d-%H-%M-%S").replace("'","")
 bot = telepot.Bot(TOKEN)
+#bot = telepot.DelegatorBot(TOKEN,
+#   pave_event_space()(
+#        per_chat_id(), create_open, Player, timeout=20),
+#]))
+log("[Logger] If you don't see this file currectly,turn the viewing encode to UTF-8.")
+log("[Debug][Logger] If you don't see this file currectly,turn the viewing encode to UTF-8.")
+log("[Debug] Bot's TOKEN is "+TOKEN)
 answerer = telepot.helper.Answerer(bot)
 
-bot.message_loop({'chat': on_chat_message})
-print('[Info] Bot has started')
-print('[Info] Listening ...')
-
+#bot.message_loop({'chat': on_chat_message})
+MessageLoop(bot, {'chat': on_chat_message}).run_as_thread()
+clog("["+time.strftime("%Y/%m/%d-%H:%M:%S").replace("'","")+"][Info] Bot has started")
+clog("["+time.strftime("%Y/%m/%d-%H:%M:%S").replace("'","")+"][Info] Listening ...")
 
 # Keep the program running.
 while 1:
