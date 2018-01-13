@@ -312,7 +312,7 @@ def a2z(textLine):
     zh = zh.replace('8', 'ㄚ')
     zh = zh.replace('9', 'ㄞ')
     zh = zh.replace('0', 'ㄢ')
-    zh = zh.replace('-', ' ㄦ')
+    zh = zh.replace('-', 'ㄦ')
     zh = zh.replace('q', 'ㄆ')
     zh = zh.replace('w', 'ㄊ')
     zh = zh.replace('e', 'ㄍ')
