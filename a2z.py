@@ -79,14 +79,16 @@ def on_chat_message(msg):
             clog(flog)
         #command_detect
         if content_type == 'text':
-            if msg['text'] == '/start':
+            cmd = msg['text'].split()
+            if cmd[0] == '/start':
                 dre = bot.sendMessage(chat_id, \
-                    '歡迎！給我英文字母我就會幫你轉成注音', reply_to_message_id=msg['message_id'])
+                    '歡迎！給我英文字母我就會幫你轉成注音\n如果您的注音是倚天注音輸入法,請回覆訊息並輸入/a2z etan', reply_to_message_id=msg['message_id'])
                 log("[Debug] Raw sent data:"+str(dre))
                 return
-            if msg['text'] == '/a2z':
-                dre = bot.sendMessage(chat_id, '此指令只能在群組中使用', reply_to_message_id=msg['message_id'])
-                log("[Debug] Raw sent data:"+str(dre))
+            if cmd[0] == '/a2z':
+                a2zc(chat_id, msg)
+                # dre = bot.sendMessage(chat_id, '此指令只能在群組中使用', reply_to_message_id=msg['message_id'])
+                # log("[Debug] Raw sent data:"+str(dre))
                 return
             string = a2z(msg['text'])
             dre = bot.sendMessage(chat_id, string, reply_to_message_id=msg['message_id'])
@@ -237,15 +239,20 @@ def a2zc(chat_id, msg):
         try:
             tcm = alpt[1]
         except:
-            dre = bot.sendMessage(chat_id, '/a2z <string>\n或回覆一個信息來將英文字母轉成注音',\
+            dre = bot.sendMessage(chat_id, '/a2z <string>\n或回覆一個信息來將英文字母轉成注音\n使用 /a2z etan <string> 或回覆時輸入 /a2z etan 來使用倚天注音輸入法轉換文字',\
                  reply_to_message_id=msg['message_id'])
             log("[Debug] Raw sent data:"+str(dre))
         else:
-            string = a2z(tcm)
+            temp=tcm.split(' ',1)
+            if temp[0] == 'etan':
+                string=a2z_etan(temp[1])
+            else:
+                string=a2z(tcm)
             dre = bot.sendMessage(chat_id, string, reply_to_message_id=msg['message_id'])
             log("[Debug] Raw sent data:"+str(dre))
             clog('[A2Z] --->'+string)
     else:
+        cmd = msg['text'].split(' ',1)
         try:
             tcm = reply_to['text']
         except:
@@ -253,7 +260,15 @@ def a2zc(chat_id, msg):
                 reply_to_message_id=msg['message_id'])
             log("[Debug] Raw sent data:"+str(dre))
         else:
-            string = a2z(tcm)
+            try:
+                temp = cmd[1]
+            except:
+                string=a2z(tcm)
+            else:
+                if temp == 'etan':
+                    string=a2z_etan(tcm)
+                else:
+                    string=a2z(tcm)
             dre = bot.sendMessage(chat_id, string, reply_to_message_id=reply_to['message_id'])
             log("[Debug] Raw sent data:"+str(dre))
             clog('[A2Z] --->'+string)
@@ -343,6 +358,94 @@ def a2z(textLine):
     zh = zh.replace(',', 'ㄝ')
     zh = zh.replace('.', 'ㄡ')
     zh = zh.replace('/', 'ㄥ')
+    return zh
+
+def a2z_etan(textLine):
+    zh = textLine.lower()
+    zh = zh.replace("ａ", "a")
+    zh = zh.replace("ｂ", "b")
+    zh = zh.replace("ｃ", "c")
+    zh = zh.replace("ｄ", "d")
+    zh = zh.replace("ｅ", "e")
+    zh = zh.replace("ｆ", "f")
+    zh = zh.replace("ｇ", "g")
+    zh = zh.replace("ｈ", "h")
+    zh = zh.replace("ｉ", "i")
+    zh = zh.replace("ｊ", "j")
+    zh = zh.replace("ｋ", "k")
+    zh = zh.replace("ｌ", "l")
+    zh = zh.replace("ｍ", "m")
+    zh = zh.replace("ｎ", "n")
+    zh = zh.replace("ｏ", "o")
+    zh = zh.replace("ｐ", "p")
+    zh = zh.replace("ｑ", "q")
+    zh = zh.replace("ｒ", "r")
+    zh = zh.replace("ｓ", "s")
+    zh = zh.replace("ｔ", "t")
+    zh = zh.replace("ｕ", "u")
+    zh = zh.replace("ｖ", "v")
+    zh = zh.replace("ｗ", "w")
+    zh = zh.replace("ｘ", "x")
+    zh = zh.replace("ｙ", "y")
+    zh = zh.replace("ｚ", "z")
+    zh = zh.replace("１", "1")
+    zh = zh.replace("２", "2")
+    zh = zh.replace("３", "3")
+    zh = zh.replace("４", "4")
+    zh = zh.replace("５", "5")
+    zh = zh.replace("６", "6")
+    zh = zh.replace("７", "7")
+    zh = zh.replace("８", "8")
+    zh = zh.replace("９", "9")
+    zh = zh.replace("０", "0")
+    zh = zh.replace("－", "-")
+    zh = zh.replace("；", ";")
+    zh = zh.replace("，", ",")
+    zh = zh.replace("．", ".")
+    zh = zh.replace("＼", "/")
+    zh = zh.replace("＝", "=")
+    zh = zh.replace("’", "'")
+    zh = zh.replace('1','˙')
+    zh = zh.replace('2','ˊ')
+    zh = zh.replace('3','ˇ')
+    zh = zh.replace('4','ˋ')
+    zh = zh.replace('7','ㄑ')
+    zh = zh.replace('8','ㄢ')
+    zh = zh.replace('9','ㄣ')
+    zh = zh.replace('0','ㄤ')
+    zh = zh.replace('-','ㄥ')
+    zh = zh.replace('=','ㄦ')
+    zh = zh.replace('q','ㄟ')
+    zh = zh.replace('w','ㄝ')
+    zh = zh.replace('e','ㄧ')
+    zh = zh.replace('r','ㄜ')
+    zh = zh.replace('t','ㄊ')
+    zh = zh.replace('y','ㄡ')
+    zh = zh.replace('u','ㄩ')
+    zh = zh.replace('i','ㄞ')
+    zh = zh.replace('o','ㄛ')
+    zh = zh.replace('p','ㄆ')
+    zh = zh.replace('a','ㄚ')
+    zh = zh.replace('s','ㄙ')
+    zh = zh.replace('d','ㄉ')
+    zh = zh.replace('f','ㄈ')
+    zh = zh.replace('g','ㄐ')
+    zh = zh.replace('h','ㄏ')
+    zh = zh.replace('j','ㄖ')
+    zh = zh.replace('k','ㄎ')
+    zh = zh.replace('l','ㄌ')
+    zh = zh.replace(';','ㄗ')
+    zh = zh.replace("'",'ㄘ')
+    zh = zh.replace('z','ㄠ')
+    zh = zh.replace('x','ㄨ')
+    zh = zh.replace('c','ㄒ')
+    zh = zh.replace('v','ㄍ')
+    zh = zh.replace('b','ㄅ')
+    zh = zh.replace('n','ㄋ')
+    zh = zh.replace('m','ㄇ')
+    zh = zh.replace(',','之')
+    zh = zh.replace('.','ㄔ')
+    zh = zh.replace('/','ㄕ')
     return zh
 
 def clog(text):
