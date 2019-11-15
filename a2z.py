@@ -1,34 +1,35 @@
+import io
+import os
 import sys
 import time
+
 import telepot
-import urllib
-import urllib.request
-import os
-import io
 from telepot.loop import MessageLoop
+
 try:
     fs = open("./config.json", "r")
 except:
     tp, val, tb = sys.exc_info()
-    print("Errored when loading config.json:"+\
-        str(val).split(',')[0].replace('(', '').replace("'", ""))
+    print("Errored when loading config.json:" + \
+          str(val).split(',')[0].replace('(', '').replace("'", ""))
     programPause = input("Press any key to stop...\n")
     exit()
 
-#load config
+# load config
 config = eval(fs.read())
 fs.close()
 TOKEN = config["TOKEN"]
 Debug = config["Debug"]
 
+
 def on_chat_message(msg):
     content_type, chat_type, chat_id = telepot.glance(msg)
     bot_me = bot.getMe()
     username = bot_me['username'].replace(' ', '')
-    log("[Debug] Raw message:"+str(msg))
-    dlog = "["+time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "")+"][Info]"
+    log("[Debug] Raw message:" + str(msg))
+    dlog = "[" + time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "") + "][Info]"
     try:
-        dlog = dlog+"[EDITED"+str(msg['edit_date'])+"]"
+        dlog = dlog + "[EDITED" + str(msg['edit_date']) + "]"
     except:
         time.sleep(0)
     try:
@@ -43,20 +44,20 @@ def on_chat_message(msg):
         except:
             fnick = fnick
         try:
-            fnick = fnick +"@"+ fuser['user']['username']
+            fnick = fnick + "@" + fuser['user']['username']
         except:
             fnick = fnick
         fuserid = str(fuser['user']['id'])
     if chat_type == 'private':
-        dlog = dlog + "[Private]["+str(msg['message_id'])+"]"
+        dlog = dlog + "[Private][" + str(msg['message_id']) + "]"
         try:
             reply_to = msg['reply_to_message']['from']['id']
         except:
             dlog = dlog
         else:
             if reply_to == bot_me['id']:
-                dlog = dlog + "( Reply to my message "+\
-                str(msg['reply_to_message']['message_id'])+" )"
+                dlog = dlog + "( Reply to my message " + \
+                       str(msg['reply_to_message']['message_id']) + " )"
             else:
                 tuser = msg['reply_to_message']['from']['first_name']
                 try:
@@ -67,23 +68,24 @@ def on_chat_message(msg):
                     tuser = tuser + '@' + msg['reply_to_message']['from']['username']
                 except:
                     tuser = tuser
-                dlog = dlog + "( Reply to "+tuser+"'s message "+\
-                str(msg['reply_to_message']['message_id'])+" )"
+                dlog = dlog + "( Reply to " + tuser + "'s message " + \
+                       str(msg['reply_to_message']['message_id']) + " )"
         if content_type == 'text':
-            dlog = dlog+ ' ' + fnick + " ( "+fuserid+" ) : " + msg['text']
+            dlog = dlog + ' ' + fnick + " ( " + fuserid + " ) : " + msg['text']
         else:
-            dlog = dlog+ ' ' + fnick + " ( "+fuserid+" ) sent a "+ content_type
+            dlog = dlog + ' ' + fnick + " ( " + fuserid + " ) sent a " + content_type
         clog(dlog)
         flog = media_log(msg, content_type)
         if flog != None:
             clog(flog)
-        #command_detect
+        # command_detect
         if content_type == 'text':
             cmd = msg['text'].split()
             if cmd[0] == '/start':
                 dre = bot.sendMessage(chat_id, \
-                    '歡迎！給我英文字母我就會幫你轉成注音\n如果您的注音是倚天注音輸入法,請回覆訊息並輸入/a2z etan', reply_to_message_id=msg['message_id'])
-                log("[Debug] Raw sent data:"+str(dre))
+                                      '歡迎！給我英文字母我就會幫你轉成注音\n如果您的注音是倚天注音輸入法,請回覆訊息並輸入/a2z etan',
+                                      reply_to_message_id=msg['message_id'])
+                log("[Debug] Raw sent data:" + str(dre))
                 return
             if cmd[0] == '/a2z':
                 a2zc(chat_id, msg)
@@ -92,18 +94,18 @@ def on_chat_message(msg):
                 return
             string = a2z(msg['text'])
             dre = bot.sendMessage(chat_id, string, reply_to_message_id=msg['message_id'])
-            log("[Debug] Raw sent data:"+str(dre))
+            log("[Debug] Raw sent data:" + str(dre))
             print('[A2Z] --->', string)
     elif chat_type == 'group' or chat_type == 'supergroup':
-        dlog = dlog + "["+str(msg['message_id'])+"]"
+        dlog = dlog + "[" + str(msg['message_id']) + "]"
         try:
             reply_to = msg['reply_to_message']['from']['id']
         except:
             dlog = dlog
         else:
             if reply_to == bot_me['id']:
-                dlog = dlog + "( Reply to my message "+\
-                    str(msg['reply_to_message']['message_id'])+" )"
+                dlog = dlog + "( Reply to my message " + \
+                       str(msg['reply_to_message']['message_id']) + " )"
             else:
                 tuser = msg['reply_to_message']['from']['first_name']
                 try:
@@ -114,15 +116,15 @@ def on_chat_message(msg):
                     tuser = tuser + '@' + msg['reply_to_message']['from']['username']
                 except:
                     tuser = tuser
-                dlog = dlog + "( Reply to "+tuser+"'s message "+\
-                    str(msg['reply_to_message']['message_id'])+" )"
+                dlog = dlog + "( Reply to " + tuser + "'s message " + \
+                       str(msg['reply_to_message']['message_id']) + " )"
         if content_type == 'text':
-            dlog = dlog+ ' ' + fnick + " ( "+fuserid+" ) in "+\
-                msg['chat']['title']+' ( '+str(chat_id)+ ' ): ' + msg['text']
+            dlog = dlog + ' ' + fnick + " ( " + fuserid + " ) in " + \
+                   msg['chat']['title'] + ' ( ' + str(chat_id) + ' ): ' + msg['text']
         elif content_type == 'new_chat_member':
             if msg['new_chat_member']['id'] == bot_me['id']:
-                dlog = dlog+ ' I have been added to ' +\
-                    msg['chat']['title']+' ( '+str(chat_id)+ ' ) by '+ fnick + " ( "+fuserid+" )"
+                dlog = dlog + ' I have been added to ' + \
+                       msg['chat']['title'] + ' ( ' + str(chat_id) + ' ) by ' + fnick + " ( " + fuserid + " )"
             else:
                 tuser = msg['new_chat_member']['first_name']
                 try:
@@ -133,12 +135,12 @@ def on_chat_message(msg):
                     tuser = tuser + '@' + msg['new_chat_member']['username']
                 except:
                     tuser = tuser
-                dlog = dlog+' '+ tuser +' joined the ' + chat_type+\
-                     ' '+msg['chat']['title']+' ( '+str(chat_id)+ ' ) '
+                dlog = dlog + ' ' + tuser + ' joined the ' + chat_type + \
+                       ' ' + msg['chat']['title'] + ' ( ' + str(chat_id) + ' ) '
         elif content_type == 'left_chat_member':
             if msg['left_chat_member']['id'] == bot_me['id']:
-                dlog = dlog+ ' I have been kicked from ' +msg['chat']['title']+\
-                    ' ( '+str(chat_id)+ ' ) by '+ fnick + " ( "+fuserid+" )"
+                dlog = dlog + ' I have been kicked from ' + msg['chat']['title'] + \
+                       ' ( ' + str(chat_id) + ' ) by ' + fnick + " ( " + fuserid + " )"
             else:
                 tuser = msg['left_chat_member']['first_name']
                 try:
@@ -149,44 +151,45 @@ def on_chat_message(msg):
                     tuser = tuser + '@' + msg['left_chat_member']['username']
                 except:
                     tuser = tuser
-                dlog = dlog+' '+ tuser +' left the ' + chat_type +\
-                     ' '+msg['chat']['title']+' ( '+str(chat_id)+ ' ) '
+                dlog = dlog + ' ' + tuser + ' left the ' + chat_type + \
+                       ' ' + msg['chat']['title'] + ' ( ' + str(chat_id) + ' ) '
         else:
-            dlog = dlog+ ' ' + fnick + " ( "+fuserid+" ) in "+\
-                msg['chat']['title']+' ( '+str(chat_id)+ ' ) sent a '+ content_type
+            dlog = dlog + ' ' + fnick + " ( " + fuserid + " ) in " + \
+                   msg['chat']['title'] + ' ( ' + str(chat_id) + ' ) sent a ' + content_type
         clog(dlog)
         flog = media_log(msg, content_type)
         if flog != None:
             clog(flog)
-        #command_detect
+        # command_detect
         if content_type == 'text':
             cmd = msg['text'].split()
-            if cmd[0] == '/a2z' or cmd[0] == '/a2z@'+username:
+            if cmd[0] == '/a2z' or cmd[0] == '/a2z@' + username:
                 a2zc(chat_id, msg)
     elif chat_type == 'channel':
-        dlog = dlog + "["+str(msg['message_id'])+"]"
+        dlog = dlog + "[" + str(msg['message_id']) + "]"
         try:
             reply_to = msg['reply_to_message']
         except:
             dlog = dlog
         else:
-            dlog = dlog + "( Reply to "+str(msg['reply_to_message']['message_id'])+" )"
+            dlog = dlog + "( Reply to " + str(msg['reply_to_message']['message_id']) + " )"
         if content_type == 'text':
-            dlog = dlog+ ' ' + fnick
+            dlog = dlog + ' ' + fnick
             if fuserid:
-                dlog = dlog + " ( "+fuserid+" )"
-            dlog = dlog + " in channel "+msg['chat']['title']+\
-                ' ( '+str(chat_id)+ ' ): ' + msg['text']
+                dlog = dlog + " ( " + fuserid + " )"
+            dlog = dlog + " in channel " + msg['chat']['title'] + \
+                   ' ( ' + str(chat_id) + ' ): ' + msg['text']
         else:
             dlog = dlog + ' ' + fnick
             if fuserid:
-                dlog = dlog + " ( "+fuserid+" )"
-            dlog = dlog +" in channel"+msg['chat']['title']+\
-                ' ( '+str(chat_id)+ ' ) sent a '+ content_type
+                dlog = dlog + " ( " + fuserid + " )"
+            dlog = dlog + " in channel" + msg['chat']['title'] + \
+                   ' ( ' + str(chat_id) + ' ) sent a ' + content_type
         clog(dlog)
         flog = media_log(msg, content_type)
         if flog != None:
             clog(flog)
+
 
 def media_log(msg, content_type):
     if content_type == 'photo':
@@ -194,42 +197,43 @@ def media_log(msg, content_type):
         photo_array = msg['photo']
         photo_array.reverse()
         try:
-            flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ photo_array[0]['file_id']
+            flog = flog + "Caption = " + msg['caption'] + " ,FileID:" + photo_array[0]['file_id']
         except:
-            flog = flog +"FileID:"+ photo_array[0]['file_id']
+            flog = flog + "FileID:" + photo_array[0]['file_id']
     elif content_type == 'audio':
         flog = "[Audio]"
         try:
-            flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['audio']['file_id']
+            flog = flog + "Caption = " + msg['caption'] + " ,FileID:" + msg['audio']['file_id']
         except:
-            flog = flog +"FileID:"+ msg['audio']['file_id']
+            flog = flog + "FileID:" + msg['audio']['file_id']
     elif content_type == 'document':
         flog = "[Document]"
         try:
-            flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['document']['file_id']
+            flog = flog + "Caption = " + msg['caption'] + " ,FileID:" + msg['document']['file_id']
         except:
-            flog = flog +"FileID:"+ msg['document']['file_id']
+            flog = flog + "FileID:" + msg['document']['file_id']
     elif content_type == 'video':
         flog = "[Video]"
         try:
-            flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['video']['file_id']
+            flog = flog + "Caption = " + msg['caption'] + " ,FileID:" + msg['video']['file_id']
         except:
-            flog = flog +"FileID:"+ msg['video']['file_id']
+            flog = flog + "FileID:" + msg['video']['file_id']
     elif content_type == 'voice':
         flog = "[Voice]"
         try:
-            flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['voice']['file_id']
+            flog = flog + "Caption = " + msg['caption'] + " ,FileID:" + msg['voice']['file_id']
         except:
-            flog = flog +"FileID:"+ msg['voice']['file_id']
+            flog = flog + "FileID:" + msg['voice']['file_id']
     elif content_type == 'sticker':
         flog = "[Sticker]"
         try:
-            flog = flog + "Caption = " +msg['caption'] +" ,FileID:"+ msg['sticker']['file_id']
+            flog = flog + "Caption = " + msg['caption'] + " ,FileID:" + msg['sticker']['file_id']
         except:
-            flog = flog +"FileID:"+ msg['sticker']['file_id']
+            flog = flog + "FileID:" + msg['sticker']['file_id']
     else:
         flog = None
     return flog
+
 
 def a2zc(chat_id, msg):
     try:
@@ -239,40 +243,42 @@ def a2zc(chat_id, msg):
         try:
             tcm = alpt[1]
         except:
-            dre = bot.sendMessage(chat_id, '/a2z <string>\n或回覆一個信息來將英文字母轉成注音\n使用 /a2z etan <string> 或回覆時輸入 /a2z etan 來使用倚天注音輸入法轉換文字',\
-                 reply_to_message_id=msg['message_id'])
-            log("[Debug] Raw sent data:"+str(dre))
+            dre = bot.sendMessage(chat_id,
+                                  '/a2z <string>\n或回覆一個信息來將英文字母轉成注音\n使用 /a2z etan <string> 或回覆時輸入 /a2z etan 來使用倚天注音輸入法轉換文字', \
+                                  reply_to_message_id=msg['message_id'])
+            log("[Debug] Raw sent data:" + str(dre))
         else:
-            temp=tcm.split(' ',1)
+            temp = tcm.split(' ', 1)
             if temp[0] == 'etan':
-                string=a2z_etan(temp[1])
+                string = a2z_etan(temp[1])
             else:
-                string=a2z(tcm)
+                string = a2z(tcm)
             dre = bot.sendMessage(chat_id, string, reply_to_message_id=msg['message_id'])
-            log("[Debug] Raw sent data:"+str(dre))
-            clog('[A2Z] --->'+string)
+            log("[Debug] Raw sent data:" + str(dre))
+            clog('[A2Z] --->' + string)
     else:
-        cmd = msg['text'].split(' ',1)
+        cmd = msg['text'].split(' ', 1)
         try:
             tcm = reply_to['text']
         except:
-            dre = bot.sendMessage(chat_id, '請回復一個文字信息',\
-                reply_to_message_id=msg['message_id'])
-            log("[Debug] Raw sent data:"+str(dre))
+            dre = bot.sendMessage(chat_id, '請回復一個文字信息', \
+                                  reply_to_message_id=msg['message_id'])
+            log("[Debug] Raw sent data:" + str(dre))
         else:
             try:
                 temp = cmd[1]
             except:
-                string=a2z(tcm)
+                string = a2z(tcm)
             else:
                 if temp == 'etan':
-                    string=a2z_etan(tcm)
+                    string = a2z_etan(tcm)
                 else:
-                    string=a2z(tcm)
+                    string = a2z(tcm)
             dre = bot.sendMessage(chat_id, string, reply_to_message_id=reply_to['message_id'])
-            log("[Debug] Raw sent data:"+str(dre))
-            clog('[A2Z] --->'+string)
+            log("[Debug] Raw sent data:" + str(dre))
+            clog('[A2Z] --->' + string)
     return
+
 
 def a2z(textLine):
     zh = textLine.lower()
@@ -360,6 +366,7 @@ def a2z(textLine):
     zh = zh.replace('/', 'ㄥ')
     return zh
 
+
 def a2z_etan(textLine):
     zh = textLine.lower()
     zh = zh.replace("ａ", "a")
@@ -405,83 +412,86 @@ def a2z_etan(textLine):
     zh = zh.replace("＼", "/")
     zh = zh.replace("＝", "=")
     zh = zh.replace("’", "'")
-    zh = zh.replace('1','˙')
-    zh = zh.replace('2','ˊ')
-    zh = zh.replace('3','ˇ')
-    zh = zh.replace('4','ˋ')
-    zh = zh.replace('7','ㄑ')
-    zh = zh.replace('8','ㄢ')
-    zh = zh.replace('9','ㄣ')
-    zh = zh.replace('0','ㄤ')
-    zh = zh.replace('-','ㄥ')
-    zh = zh.replace('=','ㄦ')
-    zh = zh.replace('q','ㄟ')
-    zh = zh.replace('w','ㄝ')
-    zh = zh.replace('e','ㄧ')
-    zh = zh.replace('r','ㄜ')
-    zh = zh.replace('t','ㄊ')
-    zh = zh.replace('y','ㄡ')
-    zh = zh.replace('u','ㄩ')
-    zh = zh.replace('i','ㄞ')
-    zh = zh.replace('o','ㄛ')
-    zh = zh.replace('p','ㄆ')
-    zh = zh.replace('a','ㄚ')
-    zh = zh.replace('s','ㄙ')
-    zh = zh.replace('d','ㄉ')
-    zh = zh.replace('f','ㄈ')
-    zh = zh.replace('g','ㄐ')
-    zh = zh.replace('h','ㄏ')
-    zh = zh.replace('j','ㄖ')
-    zh = zh.replace('k','ㄎ')
-    zh = zh.replace('l','ㄌ')
-    zh = zh.replace(';','ㄗ')
-    zh = zh.replace("'",'ㄘ')
-    zh = zh.replace('z','ㄠ')
-    zh = zh.replace('x','ㄨ')
-    zh = zh.replace('c','ㄒ')
-    zh = zh.replace('v','ㄍ')
-    zh = zh.replace('b','ㄅ')
-    zh = zh.replace('n','ㄋ')
-    zh = zh.replace('m','ㄇ')
-    zh = zh.replace(',','ㄓ')
-    zh = zh.replace('.','ㄔ')
-    zh = zh.replace('/','ㄕ')
+    zh = zh.replace('1', '˙')
+    zh = zh.replace('2', 'ˊ')
+    zh = zh.replace('3', 'ˇ')
+    zh = zh.replace('4', 'ˋ')
+    zh = zh.replace('7', 'ㄑ')
+    zh = zh.replace('8', 'ㄢ')
+    zh = zh.replace('9', 'ㄣ')
+    zh = zh.replace('0', 'ㄤ')
+    zh = zh.replace('-', 'ㄥ')
+    zh = zh.replace('=', 'ㄦ')
+    zh = zh.replace('q', 'ㄟ')
+    zh = zh.replace('w', 'ㄝ')
+    zh = zh.replace('e', 'ㄧ')
+    zh = zh.replace('r', 'ㄜ')
+    zh = zh.replace('t', 'ㄊ')
+    zh = zh.replace('y', 'ㄡ')
+    zh = zh.replace('u', 'ㄩ')
+    zh = zh.replace('i', 'ㄞ')
+    zh = zh.replace('o', 'ㄛ')
+    zh = zh.replace('p', 'ㄆ')
+    zh = zh.replace('a', 'ㄚ')
+    zh = zh.replace('s', 'ㄙ')
+    zh = zh.replace('d', 'ㄉ')
+    zh = zh.replace('f', 'ㄈ')
+    zh = zh.replace('g', 'ㄐ')
+    zh = zh.replace('h', 'ㄏ')
+    zh = zh.replace('j', 'ㄖ')
+    zh = zh.replace('k', 'ㄎ')
+    zh = zh.replace('l', 'ㄌ')
+    zh = zh.replace(';', 'ㄗ')
+    zh = zh.replace("'", 'ㄘ')
+    zh = zh.replace('z', 'ㄠ')
+    zh = zh.replace('x', 'ㄨ')
+    zh = zh.replace('c', 'ㄒ')
+    zh = zh.replace('v', 'ㄍ')
+    zh = zh.replace('b', 'ㄅ')
+    zh = zh.replace('n', 'ㄋ')
+    zh = zh.replace('m', 'ㄇ')
+    zh = zh.replace(',', 'ㄓ')
+    zh = zh.replace('.', 'ㄔ')
+    zh = zh.replace('/', 'ㄕ')
     return zh
+
 
 def clog(text):
     print(text)
     log(text)
     return
 
+
 def log(text):
     if text[0:7] == "[Debug]":
         if Debug == True:
-            logger = io.open(logpath+ "-debug.log", "a", encoding='utf8')
-            logger.write("["+time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "")+"]"+text+"\n")
+            logger = io.open(logpath + "-debug.log", "a", encoding='utf8')
+            logger.write("[" + time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "") + "]" + text + "\n")
             logger.close()
         return
-    logger= io.open(logpath+".log", "a", encoding='utf8')
-    logger.write(text+"\n")
+    logger = io.open(logpath + ".log", "a", encoding='utf8')
+    logger.write(text + "\n")
     logger.close()
     return
 
+
 if os.path.isdir("./logs") == False:
     os.mkdir("./logs")
-logpath = "./logs/"+time.strftime("%Y-%m-%d-%H-%M-%S").replace("'", "")
+logpath = "./logs/" + time.strftime("%Y-%m-%d-%H-%M-%S").replace("'", "")
 bot = telepot.Bot(TOKEN)
-#bot = telepot.DelegatorBot(TOKEN,
+# bot = telepot.DelegatorBot(TOKEN,
 #   pave_event_space()(
 #        per_chat_id(), create_open, Player, timeout=20),
-#]))
+# ]))
 log("[Logger] If you don't see this file currectly,turn the viewing encode to UTF-8.")
 log("[Debug][Logger] If you don't see this file currectly,turn the viewing encode to UTF-8.")
-log("[Debug] Bot's TOKEN is "+TOKEN)
+log("[Debug] Bot's TOKEN is " + TOKEN)
 answerer = telepot.helper.Answerer(bot)
 
-#bot.message_loop({'chat': on_chat_message})
+# bot.message_loop({'chat': on_chat_message})
 MessageLoop(bot, {'chat': on_chat_message}).run_as_thread()
-clog("["+time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "")+"][Info] Bot has started")
-clog("["+time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "")+"][Info] Listening ...")
+clog("[" + time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "") + "][Info] Bot has started")
+clog("[" + time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "") + "][Info] Listening ...")
 
 # Keep the program running.
 while 1:
