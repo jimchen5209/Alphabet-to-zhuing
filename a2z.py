@@ -6,6 +6,8 @@ import time
 import telepot
 from telepot.loop import MessageLoop
 
+from status.status import Status
+
 try:
     fs = open("./config.json", "r")
 except:
@@ -492,7 +494,12 @@ answerer = telepot.helper.Answerer(bot)
 MessageLoop(bot, {'chat': on_chat_message}).run_as_thread()
 clog("[" + time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "") + "][Info] Bot has started")
 clog("[" + time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "") + "][Info] Listening ...")
-
+status = Status("a2z")
+status.set_status()
 # Keep the program running.
-while 1:
-    time.sleep(10)
+try:
+    while 1:
+        time.sleep(10)
+except KeyboardInterrupt:
+    clog("[" + time.strftime("%Y/%m/%d-%H:%M:%S").replace("'", "") + "][Info] Closing ...")
+    status.set_status(True)
