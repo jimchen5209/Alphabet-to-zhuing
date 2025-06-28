@@ -1,6 +1,10 @@
 # Telegram-Message-Managent
 
-#To USE:
+
+> [!NOTE]
+> This project is no longer being maintained.
+
+## To USE:
 
 1.Talk to @BotFather to create a bot and get it's token on telegram.
 
